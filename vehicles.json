@@ -1,0 +1,51 @@
+[
+  {
+    "id": "AV-101",
+    "model": "Tesla CyberCab",
+    "status": "Autonomous Driving",
+    "speed": "45 km/h",
+    "battery": "82%"
+  },
+  {
+    "id": "AV-102",
+    "model": "Waymo Jaguar",
+    "status": "Detouring: Avoided Pothole / Road Damage Accident",
+    "speed": "15 km/h",
+    "battery": "100%"
+  },
+  {
+    "id": "AV-103",
+    "model": "Cruise Origin",
+    "status": "Emergency Stopped",
+    "speed": "0 km/h",
+    "battery": "44%"
+  },
+  {
+    "id": "AV-104",
+    "model": "Audi e-tron",
+    "status": "Detouring: Avoided Heavy Construction Zone",
+    "speed": "15 km/h",
+    "battery": "78%"
+  },
+  {
+    "id": "AV-105",
+    "model": "BMW i7",
+    "status": "Parked/Charging",
+    "speed": "0 km/h",
+    "battery": "55%"
+  },
+  {
+    "id": "AV-106",
+    "model": "Porsche Taycan",
+    "status": "Detouring: Avoided Water Logging / Flooding",
+    "speed": "15 km/h",
+    "battery": "92%"
+  },
+  {
+    "id": "AV-107",
+    "model": "Mercedes Benz",
+    "status": "Autonomous Driving",
+    "speed": "45 km/h",
+    "battery": "0%"
+  }
+]

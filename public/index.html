@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AV Control Center Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; }
+        
+        /* KPI Metric Row Styling */
+        .kpi-row { display: flex; gap: 15px; margin-bottom: 20px; }
+        .kpi-card { flex: 1; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); text-align: center; }
+        .kpi-card h4 { margin: 0 0 5px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-card .kpi-value { font-size: 24px; font-weight: bold; color: #0f172a; }
+
+        .form-section { display: flex; gap: 10px; margin-bottom: 25px; background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: flex-end; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+        .form-group label { font-size: 13px; font-weight: bold; color: #475569; }
+        .form-group input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; }
+        
+        .btn-fetch { background-color: #2563eb; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold; }
+        .btn-fetch:hover { background-color: #1d4ed8; }
+        .btn-add { background-color: #16a34a; color: white; border: none; padding: 9px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-add:hover { background-color: #15803d; }
+        
+        .btn-stop { background-color: #dc2626; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-stop:hover { background-color: #b91c1c; }
+        .btn-scan { background-color: #4f46e5; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-scan:hover { background-color: #4338ca; }
+        .btn-delete { background-color: #64748b; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-delete:hover { background-color: #475569; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #cbd5e1; }
+        th { background-color: #f8fafc; color: #475569; font-weight: bold; }
+        
+        .status-moving { color: #16a34a; font-weight: bold; }
+        .status-stopped { color: #dc2626; font-weight: bold; padding: 2px 6px; background-color: #fee2e2; border-radius: 4px; display: inline-block; }
+        .status-alert { color: #d97706; font-weight: bold; padding: 2px 6px; background-color: #fef3c7; border-radius: 4px; display: inline-block; }
+        
+        select { padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 13px; }
+
+        /* Chart Section Layout */
+        .chart-section { margin-top: 30px; background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; }
+        .chart-container { width: 320px; height: 320px; position: relative; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Autonomous Vehicle Telemetry Control Center</h1>
+    
+    <div class="kpi-row">
+        <div class="kpi-card" style="border-left: 4px solid #2563eb;">
+            <h4>Total Active Fleet</h4>
+            <div id="kpi-total-fleet" class="kpi-value">0</div>
+        </div>
+        <div class="kpi-card" style="border-left: 4px solid #16a34a;">
+            <h4>Average Battery Level</h4>
+            <div id="kpi-avg-battery" class="kpi-value">0%</div>
+        </div>
+        <div class="kpi-card" style="border-left: 4px solid #d97706;">
+            <h4>Active Interceptions</h4>
+            <div id="kpi-interceptions" class="kpi-value">0</div>
+        </div>
+    </div>
+    
+    <div class="form-section">
+        <div class="form-group">
+            <label for="carId">Vehicle ID</label>
+            <input type="text" id="carId" placeholder="e.g., AV-106">
+        </div>
+        <div class="form-group">
+            <label for="carModel">Vehicle Model</label>
+            <input type="text" id="carModel" placeholder="e.g., Porsche Taycan">
+        </div>
+        <div class="form-group">
+            <label for="carBattery">Battery %</label>
+            <input type="text" id="carBattery" placeholder="e.g., 92">
+        </div>
+        <button class="btn-add" onclick="addNewVehicle()">+ Add to Fleet</button>
+    </div>
+
+    <button class="btn-fetch" onclick="fetchFleetData()">Refresh Live Fleet Data</button>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Vehicle ID</th>
+                <th>Model</th>
+                <th>Status</th>
+                <th>Current Speed</th>
+                <th>Battery Capacity</th>
+                <th>Target Evaluation Route</th>
+                <th>Remote Safety Tools</th>
+            </tr>
+        </thead>
+        <tbody id="fleet-table-body">
+            <tr>
+                <td colspan="7" style="text-align: center; color: #94a3b8;">No active data stream. Click refresh to connect.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="chart-section">
+        <h3 style="color: #1e293b; margin-top: 0; font-family: sans-serif; width: 100%; text-align: left;">📊 Real-Time Fleet Deployment Distribution</h3>
+        <div class="chart-container">
+            <canvas id="fleetChart"></canvas>
+        </div>
+    </div>
+
+    <div style="margin-top: 30px; background-color: #1e293b; padding: 20px; border-radius: 6px;">
+        <h3 style="color: #38bdf8; margin-top: 0; font-family: monospace; display: flex; justify-content: space-between;">
+            <span>📡 MISSION CONTROL: SAFETY OVERRIDE & INCLUSION LOG</span>
+            <span style="font-size: 12px; color: #94a3b8;">System Status: Secure Tracking Active</span>
+        </h3>
+        <div id="system-logs" style="background-color: #0f172a; border: 1px solid #334155; color: #38bdf8; font-family: 'Courier New', Courier, monospace; font-size: 13px; padding: 15px; height: 180px; overflow-y: auto; border-radius: 4px; line-height: 1.6;">
+            <div>[SYSTEM INITIALIZED]: Cloud-connected safety overlay online. Standing by for telemetry...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const selectedRoutesCache = {};
+    let fleetChartInstance = null; // Chart reference variable
+    let globalVehiclesCache = []; // Used for tracking duplicate IDs on client side
+
+    function logSafetyEvent(message, isCritical = false) {
+        const logBox = document.getElementById('system-logs');
+        const timestamp = new Date().toLocaleTimeString();
+        const color = isCritical ? '#ef4444' : '#38bdf8'; 
+        const entry = `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+        logBox.innerHTML = entry + logBox.innerHTML;
+    }
+
+    function saveRouteSelection(vehicleId, val) {
+        selectedRoutesCache[vehicleId] = val;
+    }
+
+    // 3. RE-CALCULATE KPI CARDS & RENDER CHART GRAPH
+    function updateAnalyticsSummary(vehicles) {
+        let totalFleet = vehicles.length;
+        let totalBatterySum = 0;
+        let interceptionCount = 0;
+
+        const chartCounts = {
+            "Autonomous Driving": 0,
+            "Emergency Stopped": 0,
+            "Detouring": 0,
+            "Parked/Charging": 0
+        };
+
+        vehicles.forEach(v => {
+            // Calculate battery metrics (strip any '%' strings out securely)
+            let parsedBattery = parseInt(v.battery.toString().replace('%', ''), 10) || 0;
+            totalBatterySum += parsedBattery;
+
+            // Process statuses for KPI and Chart
+            const statusUpper = v.status.toUpperCase();
+            if (statusUpper.includes("DETOUR") || statusUpper.includes("AVOIDED")) {
+                interceptionCount++;
+                chartCounts["Detouring"]++;
+            } else if (statusUpper.includes("STOP")) {
+                chartCounts["Emergency Stopped"]++;
+            } else if (statusUpper.includes("PARK") || statusUpper.includes("CHARGE")) {
+                chartCounts["Parked/Charging"]++;
+            } else {
+                chartCounts["Autonomous Driving"]++;
+            }
+        });
+
+        let avgBattery = totalFleet > 0 ? Math.round(totalBatterySum / totalFleet) : 0;
+
+        // Render values to UI Metric HTML Cards
+        document.getElementById('kpi-total-fleet').innerText = totalFleet;
+        document.getElementById('kpi-avg-battery').innerText = `${avgBattery}%`;
+        document.getElementById('kpi-interceptions').innerText = interceptionCount;
+
+        // Render Canvas Pie Chart
+        const ctx = document.getElementById('fleetChart').getContext('2d');
+        if (fleetChartInstance) {
+            fleetChartInstance.data.datasets[0].data = [
+                chartCounts["Autonomous Driving"],
+                chartCounts["Emergency Stopped"],
+                chartCounts["Detouring"],
+                chartCounts["Parked/Charging"]
+            ];
+            fleetChartInstance.update();
+        } else {
+            fleetChartInstance = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Autonomous Driving', 'Emergency Stopped', 'Detouring', 'Parked/Charging'],
+                    datasets: [{
+                        data: [
+                            chartCounts["Autonomous Driving"],
+                            chartCounts["Emergency Stopped"],
+                            chartCounts["Detouring"],
+                            chartCounts["Parked/Charging"]
+                        ],
+                        backgroundColor: ['#16a34a', '#dc2626', '#d97706', '#2563eb'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+    }
+
+    async function fetchFleetData() {
+        try {
+            const response = await fetch('/api/vehicles');
+            const vehicles = await response.json();
+            globalVehiclesCache = vehicles; // Save to memory for local validation scans
+            
+            const tableBody = document.getElementById('fleet-table-body');
+            tableBody.innerHTML = ''; 
+            
+            vehicles.forEach(vehicle => {
+                const statusUpper = vehicle.status.toUpperCase();
+                let statusClass = 'status-moving';
+                
+                if (statusUpper.includes("STOP")) {
+                    statusClass = 'status-stopped';
+                } else if (statusUpper.includes("AVOIDED") || statusUpper.includes("DETOUR") || statusUpper.includes("REROUTING")) {
+                    statusClass = 'status-alert';
+                }
+                
+                const savedRoute = selectedRoutesCache[vehicle.id] || "Sector Alpha";
+                
+                const row = `<tr>
+                    <td><strong>${vehicle.id}</strong></td>
+                    <td>${vehicle.model}</td>
+                    <td><span class="${statusClass}">${vehicle.status}</span></td>
+                    <td>${vehicle.speed}</td>
+                    <td>${vehicle.battery.toString().includes('%') ? vehicle.battery : vehicle.battery + '%'}</td>
+                    <td>
+                        <select id="zoneSelect-${vehicle.id}" onchange="saveRouteSelection('${vehicle.id}', this.value)">
+                            <option value="Sector Alpha" ${savedRoute === "Sector Alpha" ? "selected" : ""}>Sector Alpha</option>
+                            <option value="Highway Grid 4" ${savedRoute === "Highway Grid 4" ? "selected" : ""}>Highway Grid 4</option>
+                            <option value="Downtown Terminal 2" ${savedRoute === "Downtown Terminal 2" ? "selected" : ""}>Downtown Terminal 2</option>
+                            <option value="Safe Zone Blue" ${savedRoute === "Safe Zone Blue" ? "selected" : ""}>Safe Zone Blue</option>
+                        </select>
+                        <button class="btn-scan" onclick="scanVehicleRoute('${vehicle.id}')">Scan Route</button>
+                    </td>
+                    <td>
+                        <button class="btn-stop" onclick="triggerEmergencyStop('${vehicle.id}')">Emergency Stop</button>
+                        <button class="btn-delete" onclick="deleteVehicle('${vehicle.id}')">Deregister</button>
+                    </td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+
+            // Recompute analytics values and redraw chart
+            updateAnalyticsSummary(vehicles);
+
+        } catch (error) {
+            console.error("Data fetch error:", error);
+            logSafetyEvent("CRITICAL LINK FAILURE: Server communications dropped.", true);
+        }
+    }
+
+    async function triggerEmergencyStop(vehicleId) {
+        try {
+            logSafetyEvent(`INITIATING EMERGENCY OVERRIDE for ${vehicleId}...`, true);
+            const response = await fetch(`/api/vehicles/${vehicleId}/emergency-stop`);
+            const message = await response.text();
+            logSafetyEvent(`OVERRIDE RESPONSE: ${message}`);
+            fetchFleetData(); 
+        } catch (error) {
+            logSafetyEvent(`OVERRIDE DISRUPTION: Communication with ${vehicleId} failed.`, true);
+        }
+    }
+
+    // 4. RIGOROUS INPUT VALIDATION & FORM SANITIZATION
+    async function addNewVehicle() {
+        const idInput = document.getElementById('carId').value.trim();
+        const modelInput = document.getElementById('carModel').value.trim();
+        let batteryInput = document.getElementById('carBattery').value.trim();
+
+        // Check A: Prevent blank entries
+        if (!idInput || !modelInput || !batteryInput) {
+            alert("❌ SUBMISSION REJECTED: All metrics (Vehicle ID, Model Name, and Battery Level) must be fully populated.");
+            return;
+        }
+
+        // Check B: Look for tracking ID duplicate signature profiles
+        const idExists = globalVehiclesCache.some(v => v.id.toUpperCase() === idInput.toUpperCase());
+        if (idExists) {
+            alert(`❌ REGISTRY DUPLICATION CONFLICT: A tracked asset with signature signature code "${idInput}" is already actively broadcasting telemetry data.`);
+            return;
+        }
+
+        // Clean percent symbols out if entered by the user
+        batteryInput = batteryInput.replace('%', '');
+        const batteryNum = parseInt(batteryInput, 10);
+
+        // Check C: Impossible scale containment constraints
+        if (isNaN(batteryNum) || batteryNum < 0 || batteryNum > 100) {
+            alert("❌ IMPOSSIBLE BOUNDARY RANGE: Battery state metrics must stay mapped strictly within realistic boundaries between 0% and 100%.");
+            return;
+        }
+
+        // Formatting cleanup
+        const formattedBattery = `${batteryNum}%`;
+
+        try {
+            await fetch('/api/vehicles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: idInput, model: modelInput, battery: formattedBattery })
+            });
+            logSafetyEvent(`REGISTRY UPDATE: Registered new vehicle signature ${idInput}.`);
+            
+            // Clean inputs out cleanly
+            document.getElementById('carId').value = '';
+            document.getElementById('carModel').value = '';
+            document.getElementById('carBattery').value = '';
+            
+            fetchFleetData();
+        } catch (error) {
+            logSafetyEvent("REGISTRY ERROR: Failed to register unit parameters.", true);
+        }
+    }
+
+    async function deleteVehicle(vehicleId) {
+        if (!confirm(`Remove vehicle ${vehicleId}?`)) return; 
+        try {
+            const response = await fetch(`/api/vehicles/${vehicleId}`, { method: 'DELETE' });
+            const responseText = await response.text();
+            logSafetyEvent(`REGISTRY AMENDMENT: ${responseText}`);
+            fetchFleetData(); 
+        } catch (error) {
+            logSafetyEvent("REGISTRY DELETION TRANSACTION ENCOUNTERED AN ERROR.", true);
+        }
+    }
+
+    async function scanVehicleRoute(vehicleId) {
+        const zoneDropdown = document.getElementById(`zoneSelect-${vehicleId}`);
+        const chosenZone = zoneDropdown.value;
+
+        selectedRoutesCache[vehicleId] = chosenZone;
+        logSafetyEvent(`ANALYZING PATHWAY: Scanning ahead for vehicle ${vehicleId} in zone '${chosenZone}'...`);
+
+        try {
+            const response = await fetch(`/api/vehicles/${vehicleId}/scan-route`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ targetZone: chosenZone })
+            });
+            
+            const result = await response.json();
+            const displayMessage = result.message || "Route validation processed successfully.";
+
+            if (result.hazardDetected) {
+                logSafetyEvent(`HAZARD INTERCEPTION: ${displayMessage}`, true);
+            } else {
+                logSafetyEvent(`SCAN OK [${vehicleId}]: ${displayMessage}`);
+            }
+
+            await fetchFleetData();
+        } catch (error) {
+            logSafetyEvent("ROUTE COMPILATION ERROR: Safety engine connection problem.", true);
+        }
+    }
+
+    // Auto load metrics on startup loop
+    window.onload = fetchFleetData;
+</script>
+</body>
+</html>
+

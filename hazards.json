@@ -1,0 +1,21 @@
+[
+  {
+    "hazardId": "HZ-901",
+    "type": "Heavy Construction Zone",
+    "zone": "Sector Alpha",
+    "severity": "Medium"
+  },
+  {
+    "hazardId": "HZ-902",
+    "type": "Pothole / Road Damage Accident",
+    "zone": "Highway Grid 4",
+    "severity": "High"
+  },
+  {
+    "hazardId": "HZ-903",
+    "type": "Water Logging / Flooding",
+    "zone": "Downtown Terminal 2",
+    "severity": "High"
+  }
+]
+
