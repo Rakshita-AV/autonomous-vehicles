@@ -2,50 +2,131 @@
   {
     "id": "AV-101",
     "model": "Tesla CyberCab",
-    "status": "Autonomous Driving",
+    "status": "Detouring (Flood Zone)",
     "speed": "45 km/h",
-    "battery": "82%"
+    "battery": "82%",
+    "routeKey": "Route1",
+    "currentPath": "Tindivanam Bypass Corridor",
+    "latitude": 12.5244,
+    "longitude": 80.2194,
+    "sourceCity": "Chennai",
+    "destCity": "Puducherry"
   },
   {
     "id": "AV-102",
     "model": "Waymo Jaguar",
-    "status": "Detouring: Avoided Pothole / Road Damage Accident",
-    "speed": "15 km/h",
-    "battery": "100%"
+    "status": "Detouring (Heavy Traffic)",
+    "speed": "45 km/h",
+    "battery": "100%",
+    "routeKey": "Route2",
+    "currentPath": "Palladam Highway Track",
+    "latitude": 11.0168,
+    "longitude": 76.9558,
+    "sourceCity": "Coimbatore",
+    "destCity": "Tirupur"
   },
   {
     "id": "AV-103",
     "model": "Cruise Origin",
-    "status": "Emergency Stopped",
-    "speed": "0 km/h",
-    "battery": "44%"
+    "status": "Detouring (Construction Zone)",
+    "speed": "45 km/h",
+    "battery": "44%",
+    "routeKey": "Route3",
+    "currentPath": "Sivagangai Bypass Track",
+    "latitude": 9.6844,
+    "longitude": 78.8322,
+    "sourceCity": "Madurai",
+    "destCity": "Trichy"
   },
   {
     "id": "AV-104",
     "model": "Audi e-tron",
-    "status": "Detouring: Avoided Heavy Construction Zone",
-    "speed": "15 km/h",
-    "battery": "78%"
+    "status": "Detouring (Flood Zone)",
+    "speed": "45 km/h",
+    "battery": "78%",
+    "routeKey": "Route4",
+    "currentPath": "State Highway Bypass Line",
+    "latitude": 10.7905,
+    "longitude": 78.9814,
+    "sourceCity": "Salem",
+    "destCity": "Coimbatore"
   },
   {
     "id": "AV-105",
-    "model": "BMW i7",
-    "status": "Parked/Charging",
+    "model": "Porsche Taycan",
+    "status": "Emergency Stopped (Obstacle Detected)",
     "speed": "0 km/h",
-    "battery": "55%"
+    "battery": "92%",
+    "routeKey": "Route5",
+    "currentPath": "Mysore Expressway",
+    "latitude": 12.5,
+    "longitude": 77.2,
+    "sourceCity": "Kochi",
+    "destCity": "Thrissur"
   },
   {
     "id": "AV-106",
-    "model": "Porsche Taycan",
-    "status": "Detouring: Avoided Water Logging / Flooding",
-    "speed": "15 km/h",
-    "battery": "92%"
+    "model": "Mercedes Benz",
+    "status": "Detouring (Heavy Traffic)",
+    "speed": "45 km/h",
+    "battery": "67%",
+    "routeKey": "Route6",
+    "currentPath": "Chalakkudy Inland Route",
+    "latitude": 10.2,
+    "longitude": 76.35,
+    "sourceCity": "Kozhikode",
+    "destCity": "Kochi"
   },
   {
     "id": "AV-107",
-    "model": "Mercedes Benz",
-    "status": "Autonomous Driving",
+    "model": "BMW i7",
+    "status": "Detouring (Flood Zone)",
     "speed": "45 km/h",
-    "battery": "0%"
+    "battery": "10%",
+    "routeKey": "Route7",
+    "currentPath": "Rasipuram Connecting Link",
+    "latitude": 11.45,
+    "longitude": 78.16,
+    "sourceCity": "Trichy",
+    "destCity": "Madurai"
+  },
+  {
+    "id": "AV-108",
+    "model": "Swift",
+    "status": "Parked",
+    "speed": "0 km/h",
+    "battery": "87%",
+    "routeKey": "Route8",
+    "currentPath": "Kondotty Internal Bypass",
+    "latitude": 11.15,
+    "longitude": 75.85,
+    "sourceCity": "Tirupur",
+    "destCity": "Salem"
+  },
+  {
+    "id": "AV-109",
+    "model": "Swift",
+    "routeKey": "CustomGridRoute",
+    "battery": "76%",
+    "speed": "45 km/h",
+    "status": "Detouring (Flood Zone)",
+    "currentPath": "State Highway Bypass Line",
+    "sourceCity": "Puducherry",
+    "destCity": "Coimbatore",
+    "latitude": 11.927679805161349,
+    "longitude": 79.82693420150491
+  },
+  {
+    "id": "AV-110",
+    "model": "Rolls Royce",
+    "routeKey": "CustomGridRoute",
+    "battery": "23%",
+    "speed": "45 km/h",
+    "status": "Detouring (Damaged Roads)",
+    "currentPath": "State Highway Bypass Line",
+    "sourceCity": "Salem",
+    "destCity": "Kochi",
+    "latitude": 11.653380008963039,
+    "longitude": 78.15165943018506
   }
 ]
