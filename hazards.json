@@ -2,20 +2,49 @@
   {
     "hazardId": "HZ-901",
     "type": "Heavy Construction Zone",
-    "zone": "Sector Alpha",
+    "zone": "ECR Highway (Route1)",
     "severity": "Medium"
   },
   {
     "hazardId": "HZ-902",
     "type": "Pothole / Road Damage Accident",
-    "zone": "Highway Grid 4",
+    "zone": "Avinashi Road (Route2)",
     "severity": "High"
   },
   {
     "hazardId": "HZ-903",
     "type": "Water Logging / Flooding",
-    "zone": "Downtown Terminal 2",
+    "zone": "NH 87 Corridor (Route3)",
     "severity": "High"
+  },
+  {
+    "hazardId": "HZ-904",
+    "type": "Heavy City Traffic Congestion",
+    "zone": "NH 83 Highway (Route4)",
+    "severity": "Medium"
+  },
+  {
+    "hazardId": "HZ-905",
+    "type": "Heavy Construction Zone",
+    "zone": "Mysore Expressway (Route5)",
+    "severity": "Medium"
+  },
+  {
+    "hazardId": "HZ-906",
+    "type": "Water Logging / Flooding",
+    "zone": "NH 66 Route (Route6)",
+    "severity": "High"
+  },
+  {
+    "hazardId": "HZ-907",
+    "type": "Pothole / Road Damage Accident",
+    "zone": "NH 44 Highway (Route7)",
+    "severity": "High"
+  },
+  {
+    "hazardId": "HZ-908",
+    "type": "Heavy City Traffic Congestion",
+    "zone": "NH 66 Coastal Track (Route8)",
+    "severity": "Medium"
   }
 ]
-
