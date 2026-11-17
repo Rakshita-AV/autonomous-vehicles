@@ -5,375 +5,532 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AV Control Center Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet Map Styles and Library Scripts -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h1 { color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-top: 0; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            background: linear-gradient(rgba(240,244,248,0.45), rgba(240,244,248,0.45)), url('smart_city_av.png') no-repeat center center fixed; 
+            background-size: cover; color: #1e293b; margin: 0; padding: 20px; 
+        }
+        .auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            display: flex; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .auth-card {
+            background: rgba(255, 255, 255, 0.45); border: 1px solid rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); padding: 40px; border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2); width: 100%; max-width: 400px; text-align: center; box-sizing: border-box;
+        }
         
-        /* KPI Metric Row Styling */
+        .auth-tabs { display: flex; border-bottom: 2px solid rgba(15,23,42,0.1); margin-bottom: 25px; }
+        .auth-tab { flex: 1; padding: 10px; font-weight: bold; color: #64748b; background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .auth-tab.active { color: #0284c7; border-bottom: 2px solid #0284c7; }
+
+        .auth-card h2 { color: #0284c7; margin: 0 0 25px; font-weight: 600; }
+        .auth-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 20px; text-align: left; }
+        .auth-group label { font-size: 13px; font-weight: bold; color: #475569; }
+        .auth-group input, .auth-group select { width: 100%; box-sizing: border-box; }
+        
+        .error-msg { color: #dc2626; font-size: 14px; font-weight: bold; margin-bottom: 15px; display: none; }
+        .success-msg { color: #16a34a; font-size: 14px; font-weight: bold; margin-bottom: 15px; display: none; }
+
+        .container { 
+            max-width: 1200px; margin: auto; padding: 25px; border-radius: 12px; 
+            box-shadow: 0 15px 35px rgba(15,23,42,0.08); border: 1px solid rgba(255,255,255,0.6); 
+            background: rgba(255, 255, 255, 0.45); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            filter: blur(10px); pointer-events: none; transition: filter 0.5s ease;
+        }
+        h1 { color: #0284c7; border-bottom: 2px solid rgba(2,132,199,0.15); padding-bottom: 12px; margin-top: 0; font-weight: 600; }
+        #liveMap { height: 400px; width: 100%; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid #ccc; }
+        
+        input, select { background: rgba(255,255,255,0.7) !important; color: #0f172a !important; border: 1px solid rgba(15,23,42,0.12) !important; padding: 10px 14px; border-radius: 6px; outline: none; }
+        input:focus, select:focus { border-color: #0284c7 !important; background: #fff !important; }
+
         .kpi-row { display: flex; gap: 15px; margin-bottom: 20px; }
-        .kpi-card { flex: 1; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); text-align: center; }
-        .kpi-card h4 { margin: 0 0 5px 0; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .kpi-card .kpi-value { font-size: 24px; font-weight: bold; color: #0f172a; }
+        .kpi-card { flex: 1; background: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.8); border-radius: 8px; padding: 15px; text-align: center; backdrop-filter: blur(8px); }
+        .kpi-card h4 { margin: 0 0 5px; color: #64748b; font-size: 12px; text-transform: uppercase; }
+        .kpi-card .kpi-value { font-size: 26px; font-weight: bold; color: #0f172a; }
 
-        .form-section { display: flex; gap: 10px; margin-bottom: 25px; background: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; align-items: flex-end; }
-        .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+        .form-section { display: flex; gap: 10px; margin-bottom: 25px; background: rgba(255,255,255,0.4); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.5); align-items: flex-end; backdrop-filter: blur(8px); flex-wrap: wrap; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 140px; }
         .form-group label { font-size: 13px; font-weight: bold; color: #475569; }
-        .form-group input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; }
         
-        .btn-fetch { background-color: #2563eb; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; font-weight: bold; }
-        .btn-fetch:hover { background-color: #1d4ed8; }
-        .btn-add { background-color: #16a34a; color: white; border: none; padding: 9px 15px; font-size: 14px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button { border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-fetch { background-color: #0284c7; color: white; padding: 10px 20px; font-size: 16px; margin-bottom: 20px; }
+        .btn-fetch:hover { background-color: #0369a1; }
+        .btn-add { background-color: #16a34a; color: white; padding: 11px 18px; font-size: 14px; border-radius: 6px; height: 40px; }
         .btn-add:hover { background-color: #15803d; }
-        
-        .btn-stop { background-color: #dc2626; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-stop { background-color: #dc2626; color: white; padding: 6px 12px; font-size: 13px; border-radius: 4px; }
         .btn-stop:hover { background-color: #b91c1c; }
-        .btn-scan { background-color: #4f46e5; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-scan:hover { background-color: #4338ca; }
-        .btn-delete { background-color: #64748b; color: white; border: none; padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-delete:hover { background-color: #475569; }
+        .btn-delete { background-color: #64748b; color: white; padding: 6px 12px; font-size: 13px; border-radius: 4px; }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #cbd5e1; }
-        th { background-color: #f8fafc; color: #475569; font-weight: bold; }
-        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: rgba(255,255,255,0.3); border-radius: 8px; overflow: hidden; border: 1px solid rgba(255,255,255,0.4); }
+        th, td { padding: 12px; text-align: left; }
+        th { background: rgba(255,255,255,0.75) !important; color: #0284c7; font-weight: bold; }
+        td { color: #000 !important; border-bottom: 1px solid rgba(15,23,42,0.05) !important; background: rgba(255,255,255,0.15); }
+
         .status-moving { color: #16a34a; font-weight: bold; }
-        .status-stopped { color: #dc2626; font-weight: bold; padding: 2px 6px; background-color: #fee2e2; border-radius: 4px; display: inline-block; }
-        .status-alert { color: #d97706; font-weight: bold; padding: 2px 6px; background-color: #fef3c7; border-radius: 4px; display: inline-block; }
-        
-        select { padding: 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-size: 13px; }
+        .status-rerouting { color: #2563eb; font-weight: bold; font-style: italic; animation: pulse 1.5s infinite; }
+        .status-stopped { color: #b91c1c; font-weight: bold; padding: 2px 6px; background-color: rgba(220,38,38,0.1); border-radius: 4px; display: inline-block; }
+        .status-alert { color: #d97706; font-weight: bold; padding: 2px 6px; background-color: rgba(217,119,6,0.1); border-radius: 4px; display: inline-block; }
 
-        /* Chart Section Layout */
-        .chart-section { margin-top: 30px; background: white; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: center; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+        .chart-section { margin-top: 30px; background: rgba(255,255,255,0.5); padding: 20px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; }
         .chart-container { width: 320px; height: 320px; position: relative; }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div id="authOverlay" class="auth-overlay">
+    <div class="auth-card">
+        <div class="auth-tabs">
+            <button id="tabLogin" class="auth-tab active" onclick="switchAuthMode('login')">Log In</button>
+            <button id="tabRegister" class="auth-tab" onclick="switchAuthMode('register')">Register</button>
+        </div>
+        <h2 id="authTitle">AV Gateway Control Login</h2>
+        <div id="errorMsg" class="error-msg">Access Denied: Invalid Credentials</div>
+        <div id="successMsg" class="success-msg"></div>
+        <div class="auth-group">
+            <label for="username">Operator Username</label>
+            <div id="usernameInputWrapper">
+                <select id="username">
+                    <option value="admin">admin</option>
+                    <option value="system operator">system operator</option>
+                </select>
+            </div>
+        </div>
+        <div class="auth-group">
+            <label for="password">Security Password</label>
+            <input type="password" id="password" placeholder="Enter password">
+        </div>
+        <button id="btnAuthSubmit" class="btn-fetch" style="width: 100%; margin-top: 10px;" onclick="handleAuthSubmit()">Confirm Log In</button>
+    </div>
+</div>
+
+<div id="mainContainer" class="container">
     <h1>Autonomous Vehicle Telemetry Control Center</h1>
     
     <div class="kpi-row">
-        <div class="kpi-card" style="border-left: 4px solid #2563eb;">
+        <div class="kpi-card" style="border-left: 4px solid #38bdf8;">
             <h4>Total Active Fleet</h4>
             <div id="kpi-total-fleet" class="kpi-value">0</div>
         </div>
-        <div class="kpi-card" style="border-left: 4px solid #16a34a;">
+        <div class="kpi-card" style="border-left: 4px solid #4ade80;">
             <h4>Average Battery Level</h4>
             <div id="kpi-avg-battery" class="kpi-value">0%</div>
         </div>
-        <div class="kpi-card" style="border-left: 4px solid #d97706;">
+        <div class="kpi-card" style="border-left: 4px solid #fbbf24;">
             <h4>Active Interceptions</h4>
             <div id="kpi-interceptions" class="kpi-value">0</div>
         </div>
     </div>
     
     <div class="form-section">
+        <div class="form-group"><label for="carId">Vehicle ID</label><input type="text" id="carId" placeholder="e.g., AV-109"></div>
+        <div class="form-group"><label for="carModel">Vehicle Model</label><input type="text" id="carModel" placeholder="e.g., Nexon EV"></div>
+        <div class="form-group"><label for="carBattery">Battery %</label><input type="text" id="carBattery" placeholder="e.g., 85"></div>
         <div class="form-group">
-            <label for="carId">Vehicle ID</label>
-            <input type="text" id="carId" placeholder="e.g., AV-106">
-        </div>
-        <div class="form-group">
-            <label for="carModel">Vehicle Model</label>
-            <input type="text" id="carModel" placeholder="e.g., Porsche Taycan">
-        </div>
-        <div class="form-group">
-            <label for="carBattery">Battery %</label>
-            <input type="text" id="carBattery" placeholder="e.g., 92">
+            <label for="carRoute">Assigned Corridor</label>
+            <select id="carRoute">
+                <option value="Route1">Chennai to Pondicherry</option>
+                <option value="Route2">Coimbatore to Tirupur</option>
+                <option value="Route3">Madurai to Rameswaram</option>
+                <option value="Route4">Trichy to Thanjavur</option>
+                <option value="Route5">Bengaluru to Mysuru</option>
+                <option value="Route6">Kochi to Thrissur</option>
+                <option value="Route7">Salem to Namakkal</option>
+                <option value="Route8">Kozhikode to Malappuram</option>
+            </select>
         </div>
         <button class="btn-add" onclick="addNewVehicle()">+ Add to Fleet</button>
     </div>
 
     <button class="btn-fetch" onclick="fetchFleetData()">Refresh Live Fleet Data</button>
     
+    <div id="liveMap"></div>
+
     <table>
         <thead>
             <tr>
-                <th>Vehicle ID</th>
-                <th>Model</th>
-                <th>Status</th>
-                <th>Current Speed</th>
-                <th>Battery Capacity</th>
-                <th>Target Evaluation Route</th>
-                <th>Remote Safety Tools</th>
+                <th>Vehicle ID</th><th>Model / Tracked Corridor</th><th>Status</th><th>Current Speed</th><th>Battery Capacity</th><th>Real-Time Sensor Environment</th><th>Remote Safety Tools</th>
             </tr>
         </thead>
         <tbody id="fleet-table-body">
-            <tr>
-                <td colspan="7" style="text-align: center; color: #94a3b8;">No active data stream. Click refresh to connect.</td>
-            </tr>
+            <tr><td colspan="7" style="text-align: center; color: #64748b;">No active data stream. Click refresh to connect.</td></tr>
         </tbody>
     </table>
 
     <div class="chart-section">
-        <h3 style="color: #1e293b; margin-top: 0; font-family: sans-serif; width: 100%; text-align: left;">📊 Real-Time Fleet Deployment Distribution</h3>
-        <div class="chart-container">
-            <canvas id="fleetChart"></canvas>
-        </div>
+        <h3 style="color: #38bdf8; margin: 0; width: 100%; text-align: left; font-family: sans-serif;">Real-Time Fleet Deployment Distribution</h3>
+        <div class="chart-container"><canvas id="fleetChart"></canvas></div>
     </div>
 
-    <div style="margin-top: 30px; background-color: #1e293b; padding: 20px; border-radius: 6px;">
-        <h3 style="color: #38bdf8; margin-top: 0; font-family: monospace; display: flex; justify-content: space-between;">
-            <span>📡 MISSION CONTROL: SAFETY OVERRIDE & INCLUSION LOG</span>
-            <span style="font-size: 12px; color: #94a3b8;">System Status: Secure Tracking Active</span>
+    <div style="margin-top: 30px; background: #1e293b; padding: 20px; border-radius: 6px; border: 1px solid #334155;">
+        <h3 style="color: #38bdf8; margin: 0; font-family: monospace; display: flex; justify-content: space-between;">
+            <span>MISSION CONTROL: CLOSED-LOOP EDGE TELEMETRY LOG</span>
+            <span style="font-size: 12px; color: #4ade80;">System Status: Dynamic Sensor Reactive</span>
         </h3>
-        <div id="system-logs" style="background-color: #0f172a; border: 1px solid #334155; color: #38bdf8; font-family: 'Courier New', Courier, monospace; font-size: 13px; padding: 15px; height: 180px; overflow-y: auto; border-radius: 4px; line-height: 1.6;">
+        <div id="system-logs" style="background: #0f172a; border: 1px solid #334155; color: #38bdf8; font-family: monospace; font-size: 13px; padding: 15px; height: 180px; overflow-y: auto; border-radius: 4px; line-height: 1.6;">
             <div>[SYSTEM INITIALIZED]: Cloud-connected safety overlay online. Standing by for telemetry...</div>
         </div>
     </div>
 </div>
 
 <script>
-    const selectedRoutesCache = {};
-    let fleetChartInstance = null; // Chart reference variable
-    let globalVehiclesCache = []; // Used for tracking duplicate IDs on client side
+    const selectedConditionsCache = {};
+    let fleetChartInstance = null, globalVehiclesCache = []; 
+    let map = null, markers = {}; 
+    let authMode = "login";
 
-    function logSafetyEvent(message, isCritical = false) {
-        const logBox = document.getElementById('system-logs');
-        const timestamp = new Date().toLocaleTimeString();
-        const color = isCritical ? '#ef4444' : '#38bdf8'; 
-        const entry = `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
-        logBox.innerHTML = entry + logBox.innerHTML;
+    // Reconfigured to 8 strictly isolated routes with primary and fallback paths
+    const routeConfig = {
+        Route1: { source: "Chennai", destination: "Pondicherry", mainRoad: "ECR Highway", altRoad: "Tindivanam Bypass Corridor", lat: 12.5244, lng: 80.2194 },
+        Route2: { source: "Coimbatore", destination: "Tirupur", mainRoad: "Avinashi Road", altRoad: "Palladam Highway Track", lat: 11.0168, lng: 76.9558 },
+        Route3: { source: "Madurai", destination: "Rameswaram", mainRoad: "NH 87 Corridor", altRoad: "Sivagangai Bypass Track", lat: 9.6844, lng: 78.8322 },
+        Route4: { source: "Trichy", destination: "Thanjavur", mainRoad: "NH 83 Highway", altRoad: "Sengipatti Industrial Loop", lat: 10.7905, lng: 78.9814 },
+        Route5: { source: "Bengaluru", destination: "Mysuru", mainRoad: "Mysore Expressway", altRoad: "Kanakapura Road Grid", lat: 12.5000, lng: 77.2000 },
+        Route6: { source: "Kochi", destination: "Thrissur", mainRoad: "NH 66 Route", altRoad: "Chalakkudy Inland Route", lat: 10.2000, lng: 76.3500 },
+        Route7: { source: "Salem", destination: "Namakkal", mainRoad: "NH 44 Highway", altRoad: "Rasipuram Connecting Link", lat: 11.4500, lng: 78.1600 },
+        Route8: { source: "Kozhikode", destination: "Malappuram", mainRoad: "NH 66 Coastal Track", altRoad: "Kondotty Internal Bypass", lat: 11.1500, lng: 75.8500 }
+    };
+
+    async function loadUsernamesDropdown() {
+        try {
+            const response = await fetch('/api/usernames');
+            if (response.ok) {
+                const usernames = await response.json();
+                const wrapper = document.getElementById('usernameInputWrapper');
+                let html = `<select id="username">`;
+                usernames.forEach(name => { html += `<option value="${name}">${name}</option>`; });
+                html += `</select>`;
+                wrapper.innerHTML = html;
+            }
+        } catch (err) { console.error("Failed to load usernames dynamically:", err); }
+    }
+    loadUsernamesDropdown();
+
+    function switchAuthMode(mode) {
+        authMode = mode;
+        const btnLogin = document.getElementById('tabLogin');
+        const btnRegister = document.getElementById('tabRegister');
+        const authTitle = document.getElementById('authTitle');
+        const submitBtn = document.getElementById('btnAuthSubmit');
+        const errorDiv = document.getElementById('errorMsg');
+        const successDiv = document.getElementById('successMsg');
+        const wrapper = document.getElementById('usernameInputWrapper');
+        
+        errorDiv.style.display = "none"; successDiv.style.display = "none";
+
+        if (mode === 'login') {
+            btnLogin.classList.add('active'); btnRegister.classList.remove('active');
+            authTitle.innerText = "AV Gateway Control Login"; submitBtn.innerText = "Confirm Log In";
+            loadUsernamesDropdown();
+        } else {
+            btnRegister.classList.add('active'); btnLogin.classList.remove('active');
+            authTitle.innerText = "Register New Operator Account"; submitBtn.innerText = "Create Account";
+            wrapper.innerHTML = `<input type="text" id="username" placeholder="Enter new username">`;
+        }
     }
 
-    function saveRouteSelection(vehicleId, val) {
-        selectedRoutesCache[vehicleId] = val;
-    }
+    async function handleAuthSubmit() {
+        const uField = document.getElementById('username');
+        const u = uField ? uField.value.trim() : "";
+        const p = document.getElementById('password').value;
+        const errorDiv = document.getElementById('errorMsg');
+        const successDiv = document.getElementById('successMsg');
+        const container = document.getElementById('mainContainer');
 
-    // 3. RE-CALCULATE KPI CARDS & RENDER CHART GRAPH
-    function updateAnalyticsSummary(vehicles) {
-        let totalFleet = vehicles.length;
-        let totalBatterySum = 0;
-        let interceptionCount = 0;
+        errorDiv.style.display = "none"; successDiv.style.display = "none";
+        if (!u || !p) { errorDiv.innerText = "Please fill out all credential inputs."; errorDiv.style.display = "block"; return; }
 
-        const chartCounts = {
-            "Autonomous Driving": 0,
-            "Emergency Stopped": 0,
-            "Detouring": 0,
-            "Parked/Charging": 0
-        };
+        const endpoint = authMode === 'login' ? '/api/login' : '/api/register';
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p })
+            });
 
-        vehicles.forEach(v => {
-            // Calculate battery metrics (strip any '%' strings out securely)
-            let parsedBattery = parseInt(v.battery.toString().replace('%', ''), 10) || 0;
-            totalBatterySum += parsedBattery;
-
-            // Process statuses for KPI and Chart
-            const statusUpper = v.status.toUpperCase();
-            if (statusUpper.includes("DETOUR") || statusUpper.includes("AVOIDED")) {
-                interceptionCount++;
-                chartCounts["Detouring"]++;
-            } else if (statusUpper.includes("STOP")) {
-                chartCounts["Emergency Stopped"]++;
-            } else if (statusUpper.includes("PARK") || statusUpper.includes("CHARGE")) {
-                chartCounts["Parked/Charging"]++;
+            if (response.ok) {
+                if (authMode === 'login') {
+                    document.getElementById('authOverlay').style.display = "none";
+                    container.style.filter = "none"; container.style.pointerEvents = "auto";
+                    logSafetyEvent(`ACCESS GRANTED: Operator '${u}' authenticated successfully.`);
+                    initializeMap(); fetchFleetData();
+                } else {
+                    successDiv.innerText = "Registration successful! Switched to Log In.";
+                    successDiv.style.display = "block";
+                    setTimeout(() => { switchAuthMode('login'); document.getElementById('password').value = ""; }, 1200);
+                }
             } else {
-                chartCounts["Autonomous Driving"]++;
+                errorDiv.innerText = await response.text() || "Authorization credentials invalid.";
+                errorDiv.style.display = "block";
+            }
+        } catch (err) { errorDiv.innerText = "Could not connect to the network server."; errorDiv.style.display = "block"; }
+    }
+
+    function initializeMap() {
+        if (map) return; 
+        map = L.map('liveMap').setView([11.2500, 77.8000], 7); 
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+    }
+
+    function updateMapMarkers(vehicles) {
+        if (!map) return;
+        vehicles.forEach((v) => {
+            const config = routeConfig[v.routeKey] || routeConfig.Route1;
+            let lat = v.latitude || config.lat;
+            let lng = v.longitude || config.lng;
+
+            let pathDetails = `<b>Current Track:</b> ${v.currentPath || config.mainRoad}`;
+            if (v.status.includes("Detouring") || v.status.includes("Detour")) {
+                pathDetails = `<span style="color: #2563eb; font-weight: bold;">⚠️ Detouring via Route:</span> ${v.currentPath}`;
+            }
+
+            const popupContent = `
+                <div style="font-family: sans-serif; font-size:12px; width:220px; color:#1e293b;">
+                    <b style="color:#0284c7;font-size:13px;">${v.id} (${v.model})</b><br>
+                    <b>Source:</b> ${config.source}<br>
+                    <b>Destination:</b> ${config.destination}<br>
+                    <b>Velocity:</b> ${v.speed}<br>
+                    <b>Battery:</b> ${v.battery}<br>
+                    <b>Telemetry Status:</b> ${v.status}<br>
+                    ${pathDetails}
+                </div>
+            `;
+
+            if (markers[v.id]) {
+                markers[v.id].setLatLng([lat, lng]).setPopupContent(popupContent);
+            } else {
+                markers[v.id] = L.marker([lat, lng]).addTo(map).bindPopup(popupContent);
             }
         });
+    }
 
-        let avgBattery = totalFleet > 0 ? Math.round(totalBatterySum / totalFleet) : 0;
+    function logSafetyEvent(message, isCritical = false) {
+        const logBox = document.getElementById('system-logs'); if (!logBox) return;
+        logBox.innerHTML = `<div style="color: ${isCritical ? '#f87171' : '#38bdf8'}">[${new Date().toLocaleTimeString()}] ${message}</div>` + logBox.innerHTML;
+    }
 
-        // Render values to UI Metric HTML Cards
-        document.getElementById('kpi-total-fleet').innerText = totalFleet;
-        document.getElementById('kpi-avg-battery').innerText = `${avgBattery}%`;
+    function updateAnalyticsSummary(vehicles) {
+        let totalBatterySum = 0, interceptionCount = 0;
+        const counts = { "Autonomous Driving": 0, "Emergency Stopped": 0, "Detouring": 0, "Parked/Charging": 0 };
+
+        vehicles.forEach(v => {
+            totalBatterySum += parseInt(v.battery?.toString().replace('%', ''), 10) || 0;
+            const statusUpper = (v.status || '').toUpperCase();
+            if (statusUpper.includes("DETOUR") || statusUpper.includes("REROUTED") || statusUpper.includes("ACTIVE") || statusUpper.includes("PROCESS")) { interceptionCount++; counts["Detouring"]++; }
+            else if (statusUpper.includes("STOP")) counts["Emergency Stopped"]++;
+            else if (statusUpper.includes("PARK") || statusUpper.includes("CHARGE")) counts["Parked/Charging"]++;
+            else counts["Autonomous Driving"]++;
+        });
+
+        document.getElementById('kpi-total-fleet').innerText = vehicles.length;
+        document.getElementById('kpi-avg-battery').innerText = `${vehicles.length > 0 ? Math.round(totalBatterySum / vehicles.length) : 0}%`;
         document.getElementById('kpi-interceptions').innerText = interceptionCount;
 
-        // Render Canvas Pie Chart
         const ctx = document.getElementById('fleetChart').getContext('2d');
+        const chartData = [counts["Autonomous Driving"], counts["Emergency Stopped"], counts["Detouring"], counts["Parked/Charging"]];
+
         if (fleetChartInstance) {
-            fleetChartInstance.data.datasets[0].data = [
-                chartCounts["Autonomous Driving"],
-                chartCounts["Emergency Stopped"],
-                chartCounts["Detouring"],
-                chartCounts["Parked/Charging"]
-            ];
-            fleetChartInstance.update();
+            fleetChartInstance.data.datasets[0].data = chartData; fleetChartInstance.update();
         } else {
             fleetChartInstance = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: ['Autonomous Driving', 'Emergency Stopped', 'Detouring', 'Parked/Charging'],
-                    datasets: [{
-                        data: [
-                            chartCounts["Autonomous Driving"],
-                            chartCounts["Emergency Stopped"],
-                            chartCounts["Detouring"],
-                            chartCounts["Parked/Charging"]
-                        ],
-                        backgroundColor: ['#16a34a', '#dc2626', '#d97706', '#2563eb'],
-                        borderWidth: 1
-                    }]
+                    labels: Object.keys(counts),
+                    datasets: [{ data: chartData, backgroundColor: ['#4ade80', '#f87171', '#fbbf24', '#2563eb'], borderWidth: 1, borderColor: '#1e293b' }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } } }
             });
         }
+    }
+
+    async function syncFleetWithBackend() {
+        try {
+            await fetch('/api/vehicles/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(globalVehiclesCache)
+            });
+        } catch (error) { console.error("Local state sync error:", error); }
     }
 
     async function fetchFleetData() {
+        if (document.getElementById('authOverlay').style.display !== "none") return;
+        
         try {
             const response = await fetch('/api/vehicles');
-            const vehicles = await response.json();
-            globalVehiclesCache = vehicles; // Save to memory for local validation scans
-            
-            const tableBody = document.getElementById('fleet-table-body');
-            tableBody.innerHTML = ''; 
-            
-            vehicles.forEach(vehicle => {
-                const statusUpper = vehicle.status.toUpperCase();
-                let statusClass = 'status-moving';
-                
-                if (statusUpper.includes("STOP")) {
-                    statusClass = 'status-stopped';
-                } else if (statusUpper.includes("AVOIDED") || statusUpper.includes("DETOUR") || statusUpper.includes("REROUTING")) {
-                    statusClass = 'status-alert';
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.length > 0) {
+                    const routeKeys = ["Route1", "Route2", "Route3", "Route4", "Route5", "Route6", "Route7", "Route8"];
+                    const routeDefaults = { Route1: "ECR Highway", Route2: "Avinashi Road", Route3: "NH 87 Corridor", Route4: "NH 83 Highway", Route5: "Mysore Expressway", Route6: "NH 66 Route", Route7: "NH 44 Highway", Route8: "NH 66 Coastal Track" };
+                    
+                    data.forEach((v, idx) => {
+                        if (!v.routeKey) v.routeKey = routeKeys[idx % 8];
+                        if (!v.currentPath) v.currentPath = routeDefaults[v.routeKey];
+                        if (v.status === "Parked/Charging") v.status = "Charging";
+                    });
+                    globalVehiclesCache = data;
                 }
-                
-                const savedRoute = selectedRoutesCache[vehicle.id] || "Sector Alpha";
-                
-                const row = `<tr>
-                    <td><strong>${vehicle.id}</strong></td>
-                    <td>${vehicle.model}</td>
-                    <td><span class="${statusClass}">${vehicle.status}</span></td>
-                    <td>${vehicle.speed}</td>
-                    <td>${vehicle.battery.toString().includes('%') ? vehicle.battery : vehicle.battery + '%'}</td>
-                    <td>
-                        <select id="zoneSelect-${vehicle.id}" onchange="saveRouteSelection('${vehicle.id}', this.value)">
-                            <option value="Sector Alpha" ${savedRoute === "Sector Alpha" ? "selected" : ""}>Sector Alpha</option>
-                            <option value="Highway Grid 4" ${savedRoute === "Highway Grid 4" ? "selected" : ""}>Highway Grid 4</option>
-                            <option value="Downtown Terminal 2" ${savedRoute === "Downtown Terminal 2" ? "selected" : ""}>Downtown Terminal 2</option>
-                            <option value="Safe Zone Blue" ${savedRoute === "Safe Zone Blue" ? "selected" : ""}>Safe Zone Blue</option>
-                        </select>
-                        <button class="btn-scan" onclick="scanVehicleRoute('${vehicle.id}')">Scan Route</button>
-                    </td>
-                    <td>
-                        <button class="btn-stop" onclick="triggerEmergencyStop('${vehicle.id}')">Emergency Stop</button>
-                        <button class="btn-delete" onclick="deleteVehicle('${vehicle.id}')">Deregister</button>
-                    </td>
-                </tr>`;
-                tableBody.innerHTML += row;
-            });
+            }
+        } catch (err) { console.log("Using memory fallback parameters on load disruption."); }
 
-            // Recompute analytics values and redraw chart
-            updateAnalyticsSummary(vehicles);
-
-        } catch (error) {
-            console.error("Data fetch error:", error);
-            logSafetyEvent("CRITICAL LINK FAILURE: Server communications dropped.", true);
+        if (globalVehiclesCache.length === 0) {
+            globalVehiclesCache = [
+                { id: "AV-101", model: "Tesla CyberCab", routeKey: "Route1", status: "Autonomous Driving", speed: "45 km/h", battery: "82%", currentPath: "ECR Highway" },
+                { id: "AV-102", model: "Waymo Jaguar", routeKey: "Route2", status: "Autonomous Driving", speed: "45 km/h", battery: "100%", currentPath: "Avinashi Road" },
+                { id: "AV-103", model: "Cruise Origin", routeKey: "Route3", status: "Charging", speed: "0 km/h", battery: "44%", currentPath: "Transit Paused" },
+                { id: "AV-104", model: "Audi e-tron", routeKey: "Route4", status: "Autonomous Driving", speed: "45 km/h", battery: "78%", currentPath: "NH 83 Highway" },
+                { id: "AV-105", model: "Porsche Taycan", routeKey: "Route5", status: "Autonomous Driving", speed: "45 km/h", battery: "92%", currentPath: "Mysore Expressway" },
+                { id: "AV-106", model: "Mercedes Benz", routeKey: "Route6", status: "Autonomous Driving", speed: "45 km/h", battery: "67%", currentPath: "NH 66 Route" },
+                { id: "AV-107", model: "BMW i7", routeKey: "Route7", status: "Autonomous Driving", speed: "45 km/h", battery: "10%", currentPath: "NH 44 Highway" },
+                { id: "AV-108", model: "Swift", routeKey: "Route8", status: "Autonomous Driving", speed: "45 km/h", battery: "87%", currentPath: "NH 66 Coastal Track" }
+            ];
+            await syncFleetWithBackend();
         }
+        
+        const tableBody = document.getElementById('fleet-table-body');
+        tableBody.innerHTML = ''; 
+        
+        globalVehiclesCache.forEach(vehicle => {
+            let battery = vehicle.battery?.toString() || "0", speed = vehicle.speed?.toString() || "0";
+            let sUpper = (vehicle.status || '').toUpperCase(), sClass = 'status-moving';
+            
+            if (sUpper.includes("PROCESS") || sUpper.includes("REROUTING")) sClass = 'status-rerouting';
+            else if (sUpper.includes("STOP") || sUpper.includes("PARK") || sUpper.includes("CHARGE")) sClass = 'status-stopped';
+            else if (sUpper.includes("DETOUR") || sUpper.includes("REROUTED")) sClass = 'status-alert';
+            
+            const config = routeConfig[vehicle.routeKey] || routeConfig.Route1;
+            const savedCondition = selectedConditionsCache[vehicle.id] || "Clear";
+            
+            tableBody.innerHTML += `<tr>
+                <td><strong>${vehicle.id}</strong></td>
+                <td>
+                    <div style="font-weight: bold; color: #0f172a;">${vehicle.model}</div>
+                    <div style="font-size: 11px; color: #475569;">Track: <span style="color: #0284c7; font-weight:bold;">${vehicle.currentPath || config.mainRoad}</span></div>
+                    <div style="font-size: 10px; color: #64748b;">Plan: ${config.source} ➔ ${config.destination}</div>
+                </td>
+                <td><span class="${sClass}">${vehicle.status}</span></td>
+                <td>${speed}</td>
+                <td>${battery}</td>
+                <td>
+                    <select id="conditionSelect-${vehicle.id}" onchange="handleSensorIncident('${vehicle.id}', this.value)">
+                        <option value="Clear" ${savedCondition === "Clear" ? "selected" : ""}>Clear (Nominal Track)</option>
+                        <option value="Heavy Traffic" ${savedCondition === "Heavy Traffic" ? "selected" : ""}>Heavy Traffic Disruption</option>
+                        <option value="Flood Zone" ${savedCondition === "Flood Zone" ? "selected" : ""}>Flood Disruption Zone</option>
+                        <option value="Construction Zone" ${savedCondition === "Construction Zone" ? "selected" : ""}>Under Construction Block</option>
+                        <option value="Damaged Roads" ${savedCondition === "Damaged Roads" ? "selected" : ""}>Damaged Road Hazard</option>
+                        <option value="Parked" ${savedCondition === "Parked" ? "selected" : ""}>Parked</option>
+                        <option value="Charging" ${savedCondition === "Charging" ? "selected" : ""}>Charging</option>
+                    </select>
+                </td>
+                <td>
+                    <button class="btn-stop" onclick="triggerEmergencyStop('${vehicle.id}')">Emergency Stop</button>
+                    <button class="btn-delete" onclick="deleteVehicle('${vehicle.id}')">Deregister</button>
+                </td>
+            </tr>`;
+        });
+
+        updateAnalyticsSummary(globalVehiclesCache);
+        updateMapMarkers(globalVehiclesCache); 
+    }
+
+    async function handleSensorIncident(vehicleId, environmentalValue) {
+        selectedConditionsCache[vehicleId] = environmentalValue;
+        const localV = globalVehiclesCache.find(v => v.id === vehicleId);
+        if (!localV) return;
+
+        const config = routeConfig[localV.routeKey] || routeConfig.Route1;
+
+        if (environmentalValue === "Clear") {
+            logSafetyEvent(`[SENSOR OK] ${vehicleId} reports ${config.mainRoad} is safe. Returning to baseline route tracks.`);
+            localV.status = "Autonomous Driving"; localV.speed = "45 km/h"; localV.currentPath = config.mainRoad;
+            await syncFleetWithBackend(); await fetchFleetData(); return;
+        }
+        if (environmentalValue === "Parked") {
+            logSafetyEvent(`[OPERATOR COMMAND] Parking vehicle ${vehicleId} safely.`);
+            localV.status = "Parked"; localV.speed = "0 km/h";
+            await syncFleetWithBackend(); await fetchFleetData(); return;
+        }
+        if (environmentalValue === "Charging") {
+            logSafetyEvent(`[OPERATOR COMMAND] Charging sequence initiated for ${vehicleId}.`);
+            localV.status = "Charging"; localV.speed = "0 km/h";
+            await syncFleetWithBackend(); await fetchFleetData(); return;
+        }
+
+        logSafetyEvent(`[ENV THREAT DETECTED] ${vehicleId} onboard vision systems hit hazard: "${environmentalValue}" on ${config.mainRoad}!`, true);
+        localV.status = "Processing Edge Reroute..."; localV.speed = "20 km/h"; 
+        await syncFleetWithBackend(); await fetchFleetData();
+
+        setTimeout(async () => { await executeDynamicRerouteAlgorithm(vehicleId, environmentalValue); }, 1500);
+    }
+
+    async function executeDynamicRerouteAlgorithm(vehicleId, condition) {
+        const targetVehicle = globalVehiclesCache.find(v => v.id === vehicleId);
+        if (!targetVehicle) return;
+
+        const config = routeConfig[targetVehicle.routeKey] || routeConfig.Route1;
+        let alternativeTrack = config.altRoad;
+        let engineJustification = `Dynamic ${condition} avoidance engaged. Shifting tracking metrics from ${config.mainRoad} onto secondary alternate link: ${config.altRoad}.`;
+
+        targetVehicle.status = `Detouring (${condition})`;
+        targetVehicle.speed = "45 km/h"; 
+        targetVehicle.currentPath = alternativeTrack;
+
+        logSafetyEvent(`[REROUTE SUCCEEDED] ${targetVehicle.id} successfully dynamically adjusted path -> ${alternativeTrack}.`);
+        logSafetyEvent(`[ENGINE METRIC]: ${engineJustification}`);
+        
+        await syncFleetWithBackend();
+        await fetchFleetData();
     }
 
     async function triggerEmergencyStop(vehicleId) {
-        try {
-            logSafetyEvent(`INITIATING EMERGENCY OVERRIDE for ${vehicleId}...`, true);
-            const response = await fetch(`/api/vehicles/${vehicleId}/emergency-stop`);
-            const message = await response.text();
-            logSafetyEvent(`OVERRIDE RESPONSE: ${message}`);
-            fetchFleetData(); 
-        } catch (error) {
-            logSafetyEvent(`OVERRIDE DISRUPTION: Communication with ${vehicleId} failed.`, true);
-        }
+        logSafetyEvent(`INITIATING EMERGENCY OVERRIDE for ${vehicleId}...`, true);
+        const localV = globalVehiclesCache.find(v => v.id === vehicleId);
+        if (localV) { localV.status = "Emergency Stopped"; localV.speed = "0 km/h"; }
+        await syncFleetWithBackend(); await fetchFleetData(); 
     }
 
-    // 4. RIGOROUS INPUT VALIDATION & FORM SANITIZATION
     async function addNewVehicle() {
-        const idInput = document.getElementById('carId').value.trim();
-        const modelInput = document.getElementById('carModel').value.trim();
-        let batteryInput = document.getElementById('carBattery').value.trim();
+        const id = document.getElementById('carId').value.trim();
+        const model = document.getElementById('carModel').value.trim();
+        let bat = document.getElementById('carBattery').value.trim().replace('%', '');
+        const rKey = document.getElementById('carRoute').value;
 
-        // Check A: Prevent blank entries
-        if (!idInput || !modelInput || !batteryInput) {
-            alert("❌ SUBMISSION REJECTED: All metrics (Vehicle ID, Model Name, and Battery Level) must be fully populated.");
-            return;
-        }
+        if (!id || !model || !bat) return alert("SUBMISSION REJECTED: All metric fields must be populated.");
+        if (globalVehiclesCache.some(v => v.id.toUpperCase() === id.toUpperCase())) return alert(`DUPLICATION CONFLICT: Signature "${id}" is already active.`);
+        
+        const batNum = parseInt(bat, 10);
+        if (isNaN(batNum) || batNum < 0 || batNum > 100) return alert("IMPOSSIBLE BOUNDARY RANGE.");
 
-        // Check B: Look for tracking ID duplicate signature profiles
-        const idExists = globalVehiclesCache.some(v => v.id.toUpperCase() === idInput.toUpperCase());
-        if (idExists) {
-            alert(`❌ REGISTRY DUPLICATION CONFLICT: A tracked asset with signature signature code "${idInput}" is already actively broadcasting telemetry data.`);
-            return;
-        }
-
-        // Clean percent symbols out if entered by the user
-        batteryInput = batteryInput.replace('%', '');
-        const batteryNum = parseInt(batteryInput, 10);
-
-        // Check C: Impossible scale containment constraints
-        if (isNaN(batteryNum) || batteryNum < 0 || batteryNum > 100) {
-            alert("❌ IMPOSSIBLE BOUNDARY RANGE: Battery state metrics must stay mapped strictly within realistic boundaries between 0% and 100%.");
-            return;
-        }
-
-        // Formatting cleanup
-        const formattedBattery = `${batteryNum}%`;
-
-        try {
-            await fetch('/api/vehicles', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: idInput, model: modelInput, battery: formattedBattery })
-            });
-            logSafetyEvent(`REGISTRY UPDATE: Registered new vehicle signature ${idInput}.`);
-            
-            // Clean inputs out cleanly
-            document.getElementById('carId').value = '';
-            document.getElementById('carModel').value = '';
-            document.getElementById('carBattery').value = '';
-            
-            fetchFleetData();
-        } catch (error) {
-            logSafetyEvent("REGISTRY ERROR: Failed to register unit parameters.", true);
-        }
+        const config = routeConfig[rKey] || routeConfig.Route1;
+        const newCar = { 
+            id, model, routeKey: rKey, battery: `${batNum}%`, speed: batNum < 15 ? "0 km/h" : "45 km/h", 
+            status: batNum < 15 ? "Charging" : "Autonomous Driving", 
+            currentPath: batNum < 15 ? "Transit Paused" : config.mainRoad,
+            latitude: config.lat + (Math.random() - 0.5) * 0.05, longitude: config.lng + (Math.random() - 0.5) * 0.05
+        };
+        globalVehiclesCache.push(newCar);
+        
+        logSafetyEvent(`REGISTRY UPDATE: Registered ${id} onto tracking network maps.`);
+        ['carId', 'carModel', 'carBattery'].forEach(el => document.getElementById(el).value = '');
+        await syncFleetWithBackend(); await fetchFleetData();
     }
 
     async function deleteVehicle(vehicleId) {
         if (!confirm(`Remove vehicle ${vehicleId}?`)) return; 
-        try {
-            const response = await fetch(`/api/vehicles/${vehicleId}`, { method: 'DELETE' });
-            const responseText = await response.text();
-            logSafetyEvent(`REGISTRY AMENDMENT: ${responseText}`);
-            fetchFleetData(); 
-        } catch (error) {
-            logSafetyEvent("REGISTRY DELETION TRANSACTION ENCOUNTERED AN ERROR.", true);
-        }
+        globalVehiclesCache = globalVehiclesCache.filter(v => v.id !== vehicleId);
+        if (markers[vehicleId] && map) { map.removeLayer(markers[vehicleId]); delete markers[vehicleId]; }
+        logSafetyEvent(`REGISTRY AMENDMENT: Deregistered ${vehicleId}`);
+        await syncFleetWithBackend(); await fetchFleetData();
     }
-
-    async function scanVehicleRoute(vehicleId) {
-        const zoneDropdown = document.getElementById(`zoneSelect-${vehicleId}`);
-        const chosenZone = zoneDropdown.value;
-
-        selectedRoutesCache[vehicleId] = chosenZone;
-        logSafetyEvent(`ANALYZING PATHWAY: Scanning ahead for vehicle ${vehicleId} in zone '${chosenZone}'...`);
-
-        try {
-            const response = await fetch(`/api/vehicles/${vehicleId}/scan-route`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ targetZone: chosenZone })
-            });
-            
-            const result = await response.json();
-            const displayMessage = result.message || "Route validation processed successfully.";
-
-            if (result.hazardDetected) {
-                logSafetyEvent(`HAZARD INTERCEPTION: ${displayMessage}`, true);
-            } else {
-                logSafetyEvent(`SCAN OK [${vehicleId}]: ${displayMessage}`);
-            }
-
-            await fetchFleetData();
-        } catch (error) {
-            logSafetyEvent("ROUTE COMPILATION ERROR: Safety engine connection problem.", true);
-        }
-    }
-
-    // Auto load metrics on startup loop
-    window.onload = fetchFleetData;
 </script>
 </body>
 </html>
-
